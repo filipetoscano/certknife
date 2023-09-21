@@ -13,13 +13,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "global", "global", "{DA7237
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{926E6B15-2004-46CC-B704-7FDB0E755705}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{5D754FB9-1914-41EC-B468-6946D96C3D81}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "cicd", "cicd", "{C05A73FD-2F58-4F30-916F-7D21004D510D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yttrium.Certificate", "src\Yttrium.Certificate\Yttrium.Certificate.csproj", "{26121DDF-E110-4F4B-A525-8A0FBF437B42}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Yttrium.Certificate", "src\Yttrium.Certificate\Yttrium.Certificate.csproj", "{26121DDF-E110-4F4B-A525-8A0FBF437B42}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "certknife", "src\certknife\certknife.csproj", "{240810AB-DE79-4A54-8757-809874088E97}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "certknife", "src\certknife\certknife.csproj", "{240810AB-DE79-4A54-8757-809874088E97}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,7 +1,6 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using Yttrium.Certificate;
 
 namespace certknife;
 
@@ -50,62 +49,35 @@ public class CreateCommand
         /*
          * 
          */
-        var dnb = new X500DistinguishedNameBuilder();
-        dnb.AddCommonName( this.CommonName );
+        var sscr = new SelfSignedCertificateRequest();
+        sscr.Name = new DistinguishedName();
+        sscr.Name.CommonName = this.CommonName;
+        sscr.Name.OrganizationalUnitName = this.OrganizationalUnitName;
+        // sscr.DistinguishedName.StateOrProvinceName = this.StateOrProvinceName;
+        sscr.Name.Country = this.Country;
+        sscr.Name.IsGovEntity = this.IsGovEntity;
 
-        if ( this.OrganizationalUnitName != null )
-            dnb.AddOrganizationalUnitName( this.OrganizationalUnitName );
+        sscr.KeySize = this.KeySize;
 
-        if ( this.Country != null )
-            dnb.AddCountryOrRegion( this.Country.ToUpperInvariant() );
-
-        if ( this.IsGovEntity == true )
-        {
-            if ( this.Country == null )
-            {
-                Console.WriteLine( "err: country is required when requesting gov certificate" );
-                return 2;
-            }
-
-            dnb.Add( "2.5.4.15", "Gov Entity" );
-            dnb.Add( "1.3.6.1.4.1.311.60.2.1.3", this.Country );
-        }
-
-
-        var dn = dnb.Build();
-        Console.WriteLine( "with dn: {0}", dn.Name );
-
-
-        /*
-         * Create request
-         */
-        using var rsa = RSA.Create( this.KeySize );
-
-        var request = new CertificateRequest( dn, rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1 );
-
-        X509KeyUsageFlags kuf = X509KeyUsageFlags.DataEncipherment
+        sscr.KeyUsage = X509KeyUsageFlags.DataEncipherment
                 | X509KeyUsageFlags.KeyEncipherment
                 | X509KeyUsageFlags.DigitalSignature;
 
-        request.CertificateExtensions.Add( new X509KeyUsageExtension( kuf, false ) );
-
 
         /*
-         * Create
+         * 
          */
-        var today = DateTime.UtcNow.Date;
+        X509Certificate2 certificate;
 
-        DateTimeOffset notBefore = today;
-        DateTimeOffset notAfter = today.AddDays( this.ExpiresInDays );
-
-        var certificate = request.CreateSelfSigned( notBefore, notAfter );
-
-
-        /*
-         * Only on Windows
-         */
-        if ( RuntimeInformation.IsOSPlatform( OSPlatform.Windows ) )
-            certificate.FriendlyName = this.CommonName;
+        try
+        {
+            certificate = X509Utils.GenerateSelfSigned( sscr );
+        }
+        catch ( InvalidOperationException ex )
+        {
+            Console.WriteLine( ex.Message );
+            return 2;
+        }
 
 
         /*

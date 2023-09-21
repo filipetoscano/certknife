@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 namespace certknife;
 
 /// <summary />
-[Command( "convert" )]
+[Command( "convert", Description = "Converts a PFX to another format (see sub-commands)" )]
 [Subcommand( typeof( ConvertCerCommand ) )]
 [Subcommand( typeof( ConvertPpkCommand ) )]
 [Subcommand( typeof( ConvertSshCommand ) )]

@@ -2,7 +2,6 @@
 
 namespace Yttrium.Certificate.SSH;
 
-
 /// <summary />
 public class SshPublicKeyConverter
 {

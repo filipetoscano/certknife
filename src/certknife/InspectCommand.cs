@@ -6,7 +6,7 @@ using System.Text.Json;
 namespace certknife;
 
 /// <summary />
-[Command( "inspect" )]
+[Command( "inspect", Description = "Inspects a PFX/CER certificate file" )]
 public class InspectCommand
 {
     /// <summary />
