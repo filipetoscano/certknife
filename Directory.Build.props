@@ -1,0 +1,39 @@
+<Project>
+
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>Filipe Toscano</Authors>
+    <Product>Swiss knife for certificate handling</Product>
+    <Copyright>Copyright © Filipe Toscano</Copyright>
+    <NeutralLanguage>en-US</NeutralLanguage>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/filipetoscano/certknife/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/filipetoscano/certknife.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <DebugType>portable</DebugType>
+
+    <!-- Packaging properties -->
+    <IsPackable>false</IsPackable>
+    <PackageDescription>Swiss knife for certificate handling</PackageDescription>
+    <PackageIconUrl>https://media.githubusercontent.com/media/filipetoscano/certknife/master/docs/img/icon.png</PackageIconUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageTags>certificate</PackageTags>
+
+    <!-- Debuging properties -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(IsPackable)' == 'true' ">
+    <None Include="$(MSBuildThisFileDirectory)docs\img\icon.png">
+      <Pack>true</Pack>
+      <PackagePath>/$(PackageIcon)</PackagePath>
+      <Visible>false</Visible>
+    </None>
+  </ItemGroup>
+
+</Project>

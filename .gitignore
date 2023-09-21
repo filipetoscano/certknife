@@ -1,0 +1,23 @@
+# Generic
+/.nuget/
+/.vs/
+/artifacts/
+/build/
+/dist/
+/nupkg/
+/tmp/
+
+bin/
+obj/
+*.csproj.user
+
+!/bin/
+
+# Specific
+tools/Resend.Cli/env.cmd
+tools/Resend.Cli/*.json
+
+tests/Resend.Tests/TestReport/
+tests/Resend.Tests/TestResults/
+
+# eof
