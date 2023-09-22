@@ -19,10 +19,22 @@ public class ConvertPpkCommand
     [Option( "--password", CommandOptionType.SingleValue, Description = "Password protecting PFX file." )]
     public string? Password { get; set; }
 
+    /// <summary />
+    [Option( "--same", CommandOptionType.SingleValue, Description = "Password protecting PFX file." )]
+    public bool Same { get; set; } = true;
+
 
     /// <summary />
     [Option( "-o|--output", CommandOptionType.SingleValue, Description = "Name of output PPK file." )]
     public string OutputFile { get; set; } = "out.ppk";
+
+    /// <summary />
+    [Option( "--output-password", CommandOptionType.SingleValue, Description = "Password protecting PPK file." )]
+    public string? OutputPassword { get; set; }
+
+    /// <summary />
+    [Option( "--ppk", CommandOptionType.SingleValue, Description = "Version of PPK file." )]
+    public PpkVersion Version { get; set; } = PpkVersion.Three;
 
     /// <summary />
     [Option( "--comment", CommandOptionType.SingleValue, Description = "Comment for PPK file" )]
@@ -35,7 +47,7 @@ public class ConvertPpkCommand
         /*
          * Load
          */
-        var pfx = new X509Certificate2( this.InputFile!, this.Password );
+        var pfx = new X509Certificate2( this.InputFile!, this.Password, X509KeyStorageFlags.Exportable );
 
 
         /*
@@ -45,17 +57,55 @@ public class ConvertPpkCommand
 
 
         /*
+         * 
+         */
+        string? outputPassword;
+
+        if ( this.Same == true )
+            outputPassword = this.Password;
+        else
+            outputPassword = this.OutputPassword;
+
+
+        /*
          * Convert
          */
-        var conv = new PuttyKeyFileConverter();
-        var ppk = conv.Convert( pfx, this.Password, comment );
+        string ppk;
+
+        if ( this.Version == PpkVersion.Three )
+        {
+            var conv = new PuttyKeyFile3Converter();
+            ppk = conv.Convert( pfx, outputPassword, comment );
+        }
+        else if ( this.Version == PpkVersion.Two )
+        {
+            var conv = new PuttyKeyFile2Converter();
+            ppk = conv.Convert( pfx, outputPassword, comment );
+        }
+        else
+        {
+            Console.Error.WriteLine( "err: ppk version value '{0}' is invalid", this.Version );
+            return 1;
+        }
 
 
         /*
          * Save
          */
         File.WriteAllText( this.OutputFile, ppk );
+        Console.WriteLine( "wrote ppk to {0}...", Path.GetFileName( this.OutputFile ) );
 
         return 0;
+    }
+
+
+    /// <summary />
+    public enum PpkVersion
+    {
+        /// <summary />
+        Two = 2,
+
+        /// <summary />
+        Three = 3,
     }
 }

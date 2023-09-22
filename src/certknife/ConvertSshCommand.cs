@@ -55,6 +55,7 @@ public class ConvertSshCommand
          * Save
          */
         File.WriteAllText( this.OutputFile, pub );
+        Console.WriteLine( "wrote pub to {0}...", Path.GetFileName( this.OutputFile ) );
 
         return 0;
     }

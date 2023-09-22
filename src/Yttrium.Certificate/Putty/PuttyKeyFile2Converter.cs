@@ -8,7 +8,7 @@ namespace Yttrium.Certificate.Putty;
 
 /// <summary />
 /// <see href="https://gist.github.com/bosima/ee6630d30b533c7d7b2743a849e9b9d0" />
-public class PuttyKeyFileConverter
+public class PuttyKeyFile2Converter
 {
     /*
      * Reference: https://gist.github.com/bosima/ee6630d30b533c7d7b2743a849e9b9d0
@@ -25,15 +25,64 @@ public class PuttyKeyFileConverter
     /// <summary />
     public string Convert( X509Certificate2 certificate, string? passphrase, string? comment )
     {
-        return "PPK TEXT FILE";
+        if ( certificate.HasPrivateKey == false )
+            throw new InvalidOperationException( "Certificate does not have private key" );
+
+
+        /*
+         * From:
+         * https://stackoverflow.com/questions/54483371/cannot-export-rsa-private-key-parameters-the-requested-operation-is-not-support
+         */
+        var password = passphrase ?? "";
+        RSAParameters rsa;
+
+        using ( RSA exportRewriter = RSA.Create() )
+        {
+            // Only one KDF iteration is being used here since it's immediately being
+            // imported again.  Use more if you're actually exporting encrypted keys.
+            exportRewriter.ImportEncryptedPkcs8PrivateKey(
+                password,
+                exportRewriter.ExportEncryptedPkcs8PrivateKey(
+                    password,
+                    new PbeParameters(
+                        PbeEncryptionAlgorithm.Aes128Cbc,
+                        HashAlgorithmName.SHA256,
+                        1 ) ),
+                out _ );
+
+            rsa = exportRewriter.ExportParameters( true );
+        }
+
+        return RSAToPuttyPrivateKey( rsa, password, comment ?? "" );
     }
 
 
+    /// <summary />
     public static string RSAToPuttyPrivateKey( RSAParameters keyParameters, string passphrase, string comment )
     {
-        //RSAParameters keyParameters = cryptoServiceProvider.ExportParameters(includePrivateParameters: true);
+        if ( keyParameters.Exponent == null )
+            throw new InvalidOperationException( ".Exponent is null" );
 
-        // create public buffer
+        if ( keyParameters.Modulus == null )
+            throw new InvalidOperationException( ".Modulus is null" );
+
+        if ( keyParameters.D == null )
+            throw new InvalidOperationException( ".D is null" );
+
+        if ( keyParameters.P == null )
+            throw new InvalidOperationException( ".P is null" );
+
+        if ( keyParameters.Q == null )
+            throw new InvalidOperationException( ".Q is null" );
+
+        if ( keyParameters.InverseQ == null )
+            throw new InvalidOperationException( ".InverseQ is null" );
+
+
+
+        /*
+         * Public key
+         */
         byte[] publicBuffer = new byte[ 3
             + keyType.Length 
             + GetPrefixSize( keyParameters.Exponent ) 
@@ -45,11 +94,14 @@ public class PuttyKeyFileConverter
         {
             writer.Write( new byte[] { 0x00, 0x00, 0x00 } );
             writer.Write( keyType );
-            WritePrefixed( writer, keyParameters.Exponent, CheckIsNeddPadding( keyParameters.Exponent ) );
-            WritePrefixed( writer, keyParameters.Modulus, CheckIsNeddPadding( keyParameters.Modulus ) );
+            WritePrefixed( writer, keyParameters.Exponent, CheckIfNeedsPadding( keyParameters.Exponent ) );
+            WritePrefixed( writer, keyParameters.Modulus, CheckIfNeedsPadding( keyParameters.Modulus ) );
         }
 
-        // create private buffer
+
+        /*
+         * Private key
+         */
         byte[] privateBuffer = new byte[
             GetPrefixSize( keyParameters.D ) 
             + keyParameters.D.Length 
@@ -62,15 +114,20 @@ public class PuttyKeyFileConverter
 
         using ( var writer = new BinaryWriter( new MemoryStream( privateBuffer ), Encoding.ASCII ) )
         {
-            WritePrefixed( writer, keyParameters.D, CheckIsNeddPadding( keyParameters.D ) );
-            WritePrefixed( writer, keyParameters.P, CheckIsNeddPadding( keyParameters.P ) );
-            WritePrefixed( writer, keyParameters.Q, CheckIsNeddPadding( keyParameters.Q ) );
-            WritePrefixed( writer, keyParameters.InverseQ, CheckIsNeddPadding( keyParameters.InverseQ ) );
+            WritePrefixed( writer, keyParameters.D, CheckIfNeedsPadding( keyParameters.D ) );
+            WritePrefixed( writer, keyParameters.P, CheckIfNeedsPadding( keyParameters.P ) );
+            WritePrefixed( writer, keyParameters.Q, CheckIfNeedsPadding( keyParameters.Q ) );
+            WritePrefixed( writer, keyParameters.InverseQ, CheckIfNeedsPadding( keyParameters.InverseQ ) );
         }
 
+
+        /*
+         * 
+         */
         string encryptionType = "none";
         int cipherblk = 1;
-        if ( !string.IsNullOrWhiteSpace( passphrase ) )
+
+        if ( string.IsNullOrWhiteSpace( passphrase ) == false )
         {
             encryptionType = "aes256-cbc";
             cipherblk = 16;
@@ -87,7 +144,7 @@ public class PuttyKeyFileConverter
             if ( privateEncryptedBufferLength > privateBuffer.Length )
             {
                 Debug.Assert( privateEncryptedBufferLength - privateBuffer.Length < 20 );
-                using ( var sha1 = new SHA1CryptoServiceProvider() )
+                using ( var sha1 = SHA1.Create() )
                 {
                     byte[] privateHash = sha1.ComputeHash( privateBuffer );
                     writer.Write( privateHash, 0, privateEncryptedBufferLength - privateBuffer.Length );
@@ -95,6 +152,10 @@ public class PuttyKeyFileConverter
             }
         }
 
+
+        /*
+         * 
+         */
         byte[] bytesToHash = new byte[ prefixSize + keyType.Length + prefixSize + encryptionType.Length + prefixSize + comment.Length +
                                       prefixSize + publicBuffer.Length + prefixSize + privateEncryptedBuffer.Length ];
 
@@ -114,7 +175,7 @@ public class PuttyKeyFileConverter
         }
 
         byte[] macKey;
-        using ( var sha1 = new SHA1CryptoServiceProvider() )
+        using ( var sha1 = SHA1.Create() )
         {
             macKey = sha1.ComputeHash( Encoding.ASCII.GetBytes( macKeyStr ) );
         }
@@ -125,7 +186,10 @@ public class PuttyKeyFileConverter
             mac = string.Join( "", hmacsha1.ComputeHash( bytesToHash ).Select( x => string.Format( "{0:x2}", x ) ) );
         }
 
-        // encrypt private blob
+
+        /*
+         * 
+         */
         if ( !string.IsNullOrWhiteSpace( passphrase ) )
         {
             byte[] passBytes = Encoding.ASCII.GetBytes( passphrase );
@@ -134,18 +198,18 @@ public class PuttyKeyFileConverter
             byte[] passBuffer1 = new byte[ passBufferLength ];
             Buffer.BlockCopy( passBytes, 0, passBuffer1, 4, passBytes.Length );
             byte[] passKey1;
-            using ( var sha1 = new SHA1CryptoServiceProvider() )
+            using ( var sha1 = SHA1.Create() )
             {
-                passKey1 = new SHA1CryptoServiceProvider().ComputeHash( passBuffer1 );
+                passKey1 = sha1.ComputeHash( passBuffer1 );
             }
 
             byte[] passBuffer2 = new byte[ passBufferLength ];
             passBuffer2[ 3 ] = 1;
             Buffer.BlockCopy( passBytes, 0, passBuffer2, 4, passBytes.Length );
             byte[] passKey2;
-            using ( var sha1 = new SHA1CryptoServiceProvider() )
+            using ( var sha1 = SHA1.Create() )
             {
-                passKey2 = new SHA1CryptoServiceProvider().ComputeHash( passBuffer2 );
+                passKey2 = sha1.ComputeHash( passBuffer2 );
             }
 
             byte[] passKey = new byte[ 40 ];
@@ -155,10 +219,15 @@ public class PuttyKeyFileConverter
             byte[] iv = new byte[ 16 ];
             byte[] aesKey = new byte[ 32 ];
             Buffer.BlockCopy( passKey, 0, aesKey, 0, 32 );
+
             privateEncryptedBuffer = AES256Encrypt( aesKey, iv, privateEncryptedBuffer );
         }
 
-        // output
+        
+        /*
+         * 
+         * 
+         */
         var sb = new StringBuilder();
         sb.AppendLine( "PuTTY-User-Key-File-2: " + keyType );
         sb.AppendLine( "Encryption: " + encryptionType );
@@ -167,24 +236,23 @@ public class PuttyKeyFileConverter
         string publicBlob = SysConvert.ToBase64String( publicBuffer );
         var publicLines = SpliceText( publicBlob, lineLength ).ToArray();
         sb.AppendLine( "Public-Lines: " + publicLines.Length );
+        
         foreach ( var line in publicLines )
-        {
             sb.AppendLine( line );
-        }
 
         string privateBlob = SysConvert.ToBase64String( privateEncryptedBuffer );
         var privateLines = SpliceText( privateBlob, lineLength ).ToArray();
         sb.AppendLine( "Private-Lines: " + privateLines.Length );
         foreach ( var line in privateLines )
-        {
             sb.AppendLine( line );
-        }
 
         sb.AppendLine( "Private-MAC: " + mac );
 
         return sb.ToString();
     }
 
+
+    /// <summary />
     private static void WritePrefixed( BinaryWriter writer, byte[] bytes, bool addLeadingNull = false )
     {
         var length = bytes.Length;
@@ -204,6 +272,8 @@ public class PuttyKeyFileConverter
         writer.Write( bytes );
     }
 
+
+    /// <summary />
     private static IEnumerable<string> SpliceText( string text, int length )
     {
         for ( int i = 0; i < text.Length; i += length )
@@ -212,7 +282,9 @@ public class PuttyKeyFileConverter
         }
     }
 
-    private static bool CheckIsNeddPadding( byte[] bytes )
+
+    /// <summary />
+    private static bool CheckIfNeedsPadding( byte[] bytes )
     {
         // 128 == 10000000
         // This means that the number of bits can be divided by 8.
@@ -220,11 +292,15 @@ public class PuttyKeyFileConverter
         return bytes[ 0 ] >= 128;
     }
 
+
+    /// <summary />
     private static int GetPrefixSize( byte[] bytes )
     {
-        return CheckIsNeddPadding( bytes ) ? paddedPrefixSize : prefixSize;
+        return CheckIfNeedsPadding( bytes ) ? paddedPrefixSize : prefixSize;
     }
 
+
+    /// <summary />
     private static byte[] AES256Encrypt( byte[] key, byte[] iv, byte[] bytes )
     {
         using ( RijndaelManaged rijalg = new RijndaelManaged() )
