@@ -8,7 +8,7 @@ namespace Yttrium.Certificate.Putty;
 
 /// <summary />
 /// <see href="https://gist.github.com/bosima/ee6630d30b533c7d7b2743a849e9b9d0" />
-public class PuttyKeyFile2Converter
+public class PuttyKeyFile2Converter : ConverterBase
 {
     /*
      * Reference: https://gist.github.com/bosima/ee6630d30b533c7d7b2743a849e9b9d0
@@ -16,10 +16,8 @@ public class PuttyKeyFile2Converter
      * Reference: https://antonymale.co.uk/generating-putty-key-files.html, Thanks canton7!
      */
 
-    private const int prefixSize = 4;
-    private const int paddedPrefixSize = prefixSize + 1;
     private const int lineLength = 64;
-    private const string keyType = "ssh-rsa";
+    
 
 
     /// <summary />
@@ -56,7 +54,7 @@ public class PuttyKeyFile2Converter
             rsa = exportRewriter.ExportParameters( true );
         }
 
-        return RSAToPuttyPrivateKey( rsa, outputPassword ?? "", comment ?? "" );
+        return RSAToPuttyPrivateKey( rsa, outputPassword ?? "", comment ?? "key" );
     }
 
 
@@ -87,7 +85,7 @@ public class PuttyKeyFile2Converter
          * Public key
          */
         byte[] publicBuffer = new byte[ 3
-            + keyType.Length 
+            + RsaKeyType.Length 
             + GetPrefixSize( keyParameters.Exponent ) 
             + keyParameters.Exponent.Length 
             + GetPrefixSize( keyParameters.Modulus ) 
@@ -96,7 +94,7 @@ public class PuttyKeyFile2Converter
         using ( var writer = new BinaryWriter( new MemoryStream( publicBuffer ), Encoding.ASCII ) )
         {
             writer.Write( new byte[] { 0x00, 0x00, 0x00 } );
-            writer.Write( keyType );
+            writer.Write( RsaKeyType );
             WritePrefixed( writer, keyParameters.Exponent, CheckIfNeedsPadding( keyParameters.Exponent ) );
             WritePrefixed( writer, keyParameters.Modulus, CheckIfNeedsPadding( keyParameters.Modulus ) );
         }
@@ -159,12 +157,12 @@ public class PuttyKeyFile2Converter
         /*
          * 
          */
-        byte[] bytesToHash = new byte[ prefixSize + keyType.Length + prefixSize + encryptionType.Length + prefixSize + comment.Length +
-                                      prefixSize + publicBuffer.Length + prefixSize + privateEncryptedBuffer.Length ];
+        byte[] bytesToHash = new byte[ PrefixSize + RsaKeyType.Length + PrefixSize + encryptionType.Length + PrefixSize + comment.Length +
+                                      PrefixSize + publicBuffer.Length + PrefixSize + privateEncryptedBuffer.Length ];
 
         using ( var writer = new BinaryWriter( new MemoryStream( bytesToHash ) ) )
         {
-            WritePrefixed( writer, Encoding.ASCII.GetBytes( keyType ) );
+            WritePrefixed( writer, Encoding.ASCII.GetBytes( RsaKeyType ) );
             WritePrefixed( writer, Encoding.ASCII.GetBytes( encryptionType ) );
             WritePrefixed( writer, Encoding.ASCII.GetBytes( comment ) );
             WritePrefixed( writer, publicBuffer );
@@ -232,7 +230,7 @@ public class PuttyKeyFile2Converter
          * 
          */
         var sb = new StringBuilder();
-        sb.AppendLine( "PuTTY-User-Key-File-2: " + keyType );
+        sb.AppendLine( "PuTTY-User-Key-File-2: " + RsaKeyType );
         sb.AppendLine( "Encryption: " + encryptionType );
         sb.AppendLine( "Comment: " + comment );
 
@@ -256,50 +254,12 @@ public class PuttyKeyFile2Converter
 
 
     /// <summary />
-    private static void WritePrefixed( BinaryWriter writer, byte[] bytes, bool addLeadingNull = false )
-    {
-        var length = bytes.Length;
-        if ( addLeadingNull )
-            length++;
-
-        if ( BitConverter.IsLittleEndian )
-        {
-            writer.Write( BitConverter.GetBytes( length ).Reverse().ToArray() );
-        }
-        else
-        {
-            writer.Write( BitConverter.GetBytes( length ) );
-        }
-        if ( addLeadingNull )
-            writer.Write( (byte) 0x00 );
-        writer.Write( bytes );
-    }
-
-
-    /// <summary />
     private static IEnumerable<string> SpliceText( string text, int length )
     {
         for ( int i = 0; i < text.Length; i += length )
         {
             yield return text.Substring( i, Math.Min( length, text.Length - i ) );
         }
-    }
-
-
-    /// <summary />
-    private static bool CheckIfNeedsPadding( byte[] bytes )
-    {
-        // 128 == 10000000
-        // This means that the number of bits can be divided by 8.
-        // According to the algorithm in putty, you need to add a padding.
-        return bytes[ 0 ] >= 128;
-    }
-
-
-    /// <summary />
-    private static int GetPrefixSize( byte[] bytes )
-    {
-        return CheckIfNeedsPadding( bytes ) ? paddedPrefixSize : prefixSize;
     }
 
 
