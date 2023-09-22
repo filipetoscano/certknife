@@ -6,7 +6,10 @@ namespace Yttrium.Certificate.Putty;
 public class PuttyKeyFile3Converter
 {
     /// <summary />
-    public string Convert( X509Certificate2 certificate, string? passphrase, string? comment )
+    public string Convert( X509Certificate2 certificate,
+        string? certificatePassword,
+        string? outputPassword,
+        string? comment )
     {
         return "PPK TEXT FILE";
     }

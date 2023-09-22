@@ -23,7 +23,10 @@ public class PuttyKeyFile2Converter
 
 
     /// <summary />
-    public string Convert( X509Certificate2 certificate, string? passphrase, string? comment )
+    public string Convert( X509Certificate2 certificate,
+        string? certificatePassword,
+        string? outputPassword,
+        string? comment )
     {
         if ( certificate.HasPrivateKey == false )
             throw new InvalidOperationException( "Certificate does not have private key" );
@@ -33,7 +36,7 @@ public class PuttyKeyFile2Converter
          * From:
          * https://stackoverflow.com/questions/54483371/cannot-export-rsa-private-key-parameters-the-requested-operation-is-not-support
          */
-        var password = passphrase ?? "";
+        var password = certificatePassword ?? "";
         RSAParameters rsa;
 
         using ( RSA exportRewriter = RSA.Create() )
@@ -53,7 +56,7 @@ public class PuttyKeyFile2Converter
             rsa = exportRewriter.ExportParameters( true );
         }
 
-        return RSAToPuttyPrivateKey( rsa, password, comment ?? "" );
+        return RSAToPuttyPrivateKey( rsa, outputPassword ?? "", comment ?? "" );
     }
 
 

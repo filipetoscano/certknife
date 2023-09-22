@@ -20,8 +20,8 @@ public class ConvertPpkCommand
     public string? Password { get; set; }
 
     /// <summary />
-    [Option( "--same", CommandOptionType.SingleValue, Description = "Password protecting PFX file." )]
-    public bool Same { get; set; } = true;
+    [Option( "--same", CommandOptionType.NoValue, Description = "When used, PPK password will be same as PFX." )]
+    public bool Same { get; set; }
 
 
     /// <summary />
@@ -75,12 +75,12 @@ public class ConvertPpkCommand
         if ( this.Version == PpkVersion.Three )
         {
             var conv = new PuttyKeyFile3Converter();
-            ppk = conv.Convert( pfx, outputPassword, comment );
+            ppk = conv.Convert( pfx, outputPassword, outputPassword, comment );
         }
         else if ( this.Version == PpkVersion.Two )
         {
             var conv = new PuttyKeyFile2Converter();
-            ppk = conv.Convert( pfx, outputPassword, comment );
+            ppk = conv.Convert( pfx, this.Password, outputPassword, comment );
         }
         else
         {
