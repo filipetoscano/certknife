@@ -306,16 +306,16 @@ public class PuttyKeyFile2Converter
     /// <summary />
     private static byte[] AES256Encrypt( byte[] key, byte[] iv, byte[] bytes )
     {
-        using ( RijndaelManaged rijalg = new RijndaelManaged() )
+        using ( var aes = Aes.Create() )
         {
-            rijalg.BlockSize = 128;
-            rijalg.KeySize = 256;
-            rijalg.Padding = PaddingMode.None;
-            rijalg.Mode = CipherMode.CBC;
-            rijalg.Key = key;
-            rijalg.IV = iv;
+            aes.BlockSize = 128;
+            aes.KeySize = 256;
+            aes.Padding = PaddingMode.None;
+            aes.Mode = CipherMode.CBC;
+            aes.Key = key;
+            aes.IV = iv;
 
-            ICryptoTransform encryptor = rijalg.CreateEncryptor( rijalg.Key, rijalg.IV );
+            ICryptoTransform encryptor = aes.CreateEncryptor( aes.Key, aes.IV );
             return encryptor.TransformFinalBlock( bytes, 0, bytes.Length );
         }
     }
