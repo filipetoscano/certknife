@@ -154,7 +154,7 @@ public class PuttyKeyFile2Converter : ConverterBase
         /*
          * 
          */
-        if ( !string.IsNullOrWhiteSpace( passphrase ) )
+        if ( string.IsNullOrWhiteSpace( passphrase ) == false )
         {
             byte[] passBytes = Encoding.ASCII.GetBytes( passphrase );
             int passBufferLength = passphrase.Length + 4;
@@ -205,16 +205,6 @@ public class PuttyKeyFile2Converter : ConverterBase
         sb.AppendLine( "Private-MAC: " + mac );
 
         return sb.ToString();
-    }
-
-
-    /// <summary />
-    private static IEnumerable<string> SpliceText( string text, int length )
-    {
-        for ( int i = 0; i < text.Length; i += length )
-        {
-            yield return text.Substring( i, Math.Min( length, text.Length - i ) );
-        }
     }
 
 

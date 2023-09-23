@@ -84,6 +84,16 @@ public abstract class ConverterBase
 
 
     /// <summary />
+    protected static IEnumerable<string> SpliceText( string text, int length )
+    {
+        for ( int i = 0; i < text.Length; i += length )
+        {
+            yield return text.Substring( i, Math.Min( length, text.Length - i ) );
+        }
+    }
+
+
+    /// <summary />
     protected const int PpkLineLength = 64;
 
     /// <summary />
