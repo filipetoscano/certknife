@@ -17,3 +17,14 @@ Commands:
 
 Run 'certknife [command] -?|-h|--help' for more information about a command.
 ```
+
+
+Testing locally
+-------------------------------------------------------------------------
+
+```
+dotnet run -- create --common-name="Filipe Toscano"
+dotnet run -- inspect out.pfx
+dotnet run -- convert ppk out.pfx --ppk=2
+dotnet run -- convert ssh out.pfx --console
+```

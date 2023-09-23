@@ -1,5 +1,6 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace certknife;
@@ -30,7 +31,18 @@ public class ConvertCerCommand
         /*
          * Load
          */
-        var pfx = new X509Certificate2( this.InputFile!, this.Password );
+        X509Certificate2 pfx;
+
+        try
+        {
+            pfx = new X509Certificate2( this.InputFile!, this.Password, X509KeyStorageFlags.Exportable );
+        }
+        catch ( CryptographicException ex )
+        {
+            Console.WriteLine( "err: unable to load certificate: {0}", ex.Message );
+
+            return 1;
+        }
 
 
         /*

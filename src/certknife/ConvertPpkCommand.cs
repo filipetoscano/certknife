@@ -1,5 +1,6 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Yttrium.Certificate.Putty;
 
@@ -47,7 +48,18 @@ public class ConvertPpkCommand
         /*
          * Load
          */
-        var pfx = new X509Certificate2( this.InputFile!, this.Password, X509KeyStorageFlags.Exportable );
+        X509Certificate2 pfx;
+
+        try
+        {
+            pfx = new X509Certificate2( this.InputFile!, this.Password, X509KeyStorageFlags.Exportable );
+        }
+        catch ( CryptographicException ex )
+        {
+            Console.WriteLine( "err: unable to load certificate: {0}", ex.Message );
+
+            return 1;
+        }
 
 
         /*
@@ -75,12 +87,12 @@ public class ConvertPpkCommand
         if ( this.Version == PpkVersion.Three )
         {
             var conv = new PuttyKeyFile3Converter();
-            ppk = conv.Convert( pfx, outputPassword, outputPassword, comment );
+            ppk = conv.Convert( pfx, outputPassword, comment );
         }
         else if ( this.Version == PpkVersion.Two )
         {
             var conv = new PuttyKeyFile2Converter();
-            ppk = conv.Convert( pfx, this.Password, outputPassword, comment );
+            ppk = conv.Convert( pfx, outputPassword, comment );
         }
         else
         {

@@ -15,51 +15,20 @@ public class PuttyKeyFile2Converter : ConverterBase
      * Reference: https://github.com/akira345/pem2ppk, Thanks akira345!
      * Reference: https://antonymale.co.uk/generating-putty-key-files.html, Thanks canton7!
      */
-
-    private const int lineLength = 64;
     
-
 
     /// <summary />
     public string Convert( X509Certificate2 certificate,
-        string? certificatePassword,
         string? outputPassword,
         string? comment )
     {
-        if ( certificate.HasPrivateKey == false )
-            throw new InvalidOperationException( "Certificate does not have private key" );
-
-
-        /*
-         * From:
-         * https://stackoverflow.com/questions/54483371/cannot-export-rsa-private-key-parameters-the-requested-operation-is-not-support
-         */
-        var password = certificatePassword ?? "";
-        RSAParameters rsa;
-
-        using ( RSA exportRewriter = RSA.Create() )
-        {
-            // Only one KDF iteration is being used here since it's immediately being
-            // imported again.  Use more if you're actually exporting encrypted keys.
-            exportRewriter.ImportEncryptedPkcs8PrivateKey(
-                password,
-                exportRewriter.ExportEncryptedPkcs8PrivateKey(
-                    password,
-                    new PbeParameters(
-                        PbeEncryptionAlgorithm.Aes128Cbc,
-                        HashAlgorithmName.SHA256,
-                        1 ) ),
-                out _ );
-
-            rsa = exportRewriter.ExportParameters( true );
-        }
-
-        return RSAToPuttyPrivateKey( rsa, outputPassword ?? "", comment ?? "key" );
+        var rsa = GetRsaParameters( certificate );
+        return ToPuttyPrivateKeyFile( rsa, outputPassword ?? "", comment ?? "key" );
     }
 
 
     /// <summary />
-    public static string RSAToPuttyPrivateKey( RSAParameters keyParameters, string passphrase, string comment )
+    public static string ToPuttyPrivateKeyFile( RSAParameters keyParameters, string passphrase, string comment )
     {
         if ( keyParameters.Exponent == null )
             throw new InvalidOperationException( ".Exponent is null" );
@@ -145,11 +114,9 @@ public class PuttyKeyFile2Converter : ConverterBase
             if ( privateEncryptedBufferLength > privateBuffer.Length )
             {
                 Debug.Assert( privateEncryptedBufferLength - privateBuffer.Length < 20 );
-                using ( var sha1 = SHA1.Create() )
-                {
-                    byte[] privateHash = sha1.ComputeHash( privateBuffer );
-                    writer.Write( privateHash, 0, privateEncryptedBufferLength - privateBuffer.Length );
-                }
+
+                byte[] privateHash = SHA1.HashData( privateBuffer );
+                writer.Write( privateHash, 0, privateEncryptedBufferLength - privateBuffer.Length );
             }
         }
 
@@ -175,11 +142,7 @@ public class PuttyKeyFile2Converter : ConverterBase
             macKeyStr += passphrase;
         }
 
-        byte[] macKey;
-        using ( var sha1 = SHA1.Create() )
-        {
-            macKey = sha1.ComputeHash( Encoding.ASCII.GetBytes( macKeyStr ) );
-        }
+        byte[] macKey = SHA1.HashData( Encoding.ASCII.GetBytes( macKeyStr ) );
 
         string mac;
         using ( var hmacsha1 = new HMACSHA1( macKey ) )
@@ -198,20 +161,12 @@ public class PuttyKeyFile2Converter : ConverterBase
 
             byte[] passBuffer1 = new byte[ passBufferLength ];
             Buffer.BlockCopy( passBytes, 0, passBuffer1, 4, passBytes.Length );
-            byte[] passKey1;
-            using ( var sha1 = SHA1.Create() )
-            {
-                passKey1 = sha1.ComputeHash( passBuffer1 );
-            }
+            byte[] passKey1 = SHA1.HashData( passBuffer1 );
 
             byte[] passBuffer2 = new byte[ passBufferLength ];
             passBuffer2[ 3 ] = 1;
             Buffer.BlockCopy( passBytes, 0, passBuffer2, 4, passBytes.Length );
-            byte[] passKey2;
-            using ( var sha1 = SHA1.Create() )
-            {
-                passKey2 = sha1.ComputeHash( passBuffer2 );
-            }
+            byte[] passKey2 = SHA1.HashData( passBuffer2 );
 
             byte[] passKey = new byte[ 40 ];
             Buffer.BlockCopy( passKey1, 0, passKey, 0, 20 );
@@ -235,14 +190,14 @@ public class PuttyKeyFile2Converter : ConverterBase
         sb.AppendLine( "Comment: " + comment );
 
         string publicBlob = SysConvert.ToBase64String( publicBuffer );
-        var publicLines = SpliceText( publicBlob, lineLength ).ToArray();
+        var publicLines = SpliceText( publicBlob, PpkLineLength ).ToArray();
         sb.AppendLine( "Public-Lines: " + publicLines.Length );
         
         foreach ( var line in publicLines )
             sb.AppendLine( line );
 
         string privateBlob = SysConvert.ToBase64String( privateEncryptedBuffer );
-        var privateLines = SpliceText( privateBlob, lineLength ).ToArray();
+        var privateLines = SpliceText( privateBlob, PpkLineLength ).ToArray();
         sb.AppendLine( "Private-Lines: " + privateLines.Length );
         foreach ( var line in privateLines )
             sb.AppendLine( line );

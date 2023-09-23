@@ -1,5 +1,6 @@
 ﻿using McMaster.Extensions.CommandLineUtils;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Yttrium.Certificate.SSH;
 
@@ -25,6 +26,10 @@ public class ConvertSshCommand
     public string OutputFile { get; set; } = "out.pub";
 
     /// <summary />
+    [Option( "--console", CommandOptionType.NoValue, Description = "Writes to standard out, rather than output file." )]
+    public bool ToConsole { get; set; }
+
+    /// <summary />
     [Option( "--comment", CommandOptionType.SingleValue, Description = "Comment for SSH key line" )]
     public string? Comment { get; set; }
 
@@ -35,7 +40,18 @@ public class ConvertSshCommand
         /*
          * Load
          */
-        var pfx = new X509Certificate2( this.InputFile!, this.Password );
+        X509Certificate2 pfx;
+
+        try
+        {
+            pfx = new X509Certificate2( this.InputFile!, this.Password, X509KeyStorageFlags.Exportable );
+        }
+        catch ( CryptographicException ex )
+        {
+            Console.WriteLine( "err: unable to load certificate: {0}", ex.Message );
+
+            return 1;
+        }
 
 
         /*
@@ -54,8 +70,15 @@ public class ConvertSshCommand
         /*
          * Save
          */
-        File.WriteAllText( this.OutputFile, pub );
-        Console.WriteLine( "wrote pub to {0}...", Path.GetFileName( this.OutputFile ) );
+        if ( this.ToConsole == true )
+        {
+            Console.WriteLine( pub );
+        }
+        else
+        {
+            File.WriteAllText( this.OutputFile, pub );
+            Console.WriteLine( "wrote pub to {0}...", Path.GetFileName( this.OutputFile ) );
+        }
 
         return 0;
     }

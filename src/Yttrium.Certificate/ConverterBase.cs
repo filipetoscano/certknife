@@ -1,8 +1,58 @@
-﻿namespace Yttrium.Certificate;
+﻿using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+
+namespace Yttrium.Certificate;
 
 /// <summary />
 public abstract class ConverterBase
 {
+    /// <summary />
+    /// <returns>RSA parameters.</returns>
+    /// <see href="https://stackoverflow.com/questions/54483371/cannot-export-rsa-private-key-parameters-the-requested-operation-is-not-support" />
+    protected static RSAParameters GetRsaParameters( X509Certificate2 certificate )
+    {
+        if ( certificate.HasPrivateKey == false )
+            throw new InvalidOperationException( "Certificate does not have private key" );
+
+
+        /*
+         * 
+         */
+        var rsa = certificate.GetRSAPrivateKey()!;
+
+        try
+        {
+            return rsa.ExportParameters( true );
+        }
+        catch
+        {
+        }
+
+
+        /*
+         * 
+         */
+        var password = "password";
+
+        using ( RSA exportRewriter = RSA.Create() )
+        {
+            // Only one KDF iteration is being used here since it's immediately being
+            // imported again.  Use more if you're actually exporting encrypted keys.
+            exportRewriter.ImportEncryptedPkcs8PrivateKey(
+                password,
+                rsa.ExportEncryptedPkcs8PrivateKey(
+                    password,
+                    new PbeParameters(
+                        PbeEncryptionAlgorithm.Aes128Cbc,
+                        HashAlgorithmName.SHA256,
+                        1 ) ),
+                out _ );
+
+            return exportRewriter.ExportParameters( true );
+        }
+    }
+
+
     /// <summary />
     protected static void WritePrefixed( BinaryWriter writer, byte[] bytes, bool addLeadingNull = false )
     {
@@ -32,6 +82,9 @@ public abstract class ConverterBase
         return bytes[ 0 ] >= 128;
     }
 
+
+    /// <summary />
+    protected const int PpkLineLength = 64;
 
     /// <summary />
     protected const string RsaKeyType = "ssh-rsa";

@@ -10,7 +10,7 @@ public class SshPublicKeyConverter : ConverterBase
     /// <summary />
     public string Convert( X509Certificate2 certificate, string? comment )
     {
-        var keyParameters = certificate.GetRSAPublicKey()!.ExportParameters( false );
+        var keyParameters = GetRsaParameters( certificate );
 
         if ( keyParameters.Exponent == null )
             throw new InvalidOperationException( ".Exponent is null" );
@@ -43,9 +43,9 @@ public class SshPublicKeyConverter : ConverterBase
          */
         var sb = new StringBuilder();
         sb.Append( RsaKeyType );
-        sb.Append( " " );
+        sb.Append( ' ' );
         sb.Append( SysConvert.ToBase64String( publicBuffer ) );
-        sb.Append( " " );
+        sb.Append( ' ' );
         sb.Append( comment ?? "key" );
 
         return sb.ToString();
